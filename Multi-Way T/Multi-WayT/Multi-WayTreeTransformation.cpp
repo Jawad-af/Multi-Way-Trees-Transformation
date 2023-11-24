@@ -1,239 +1,167 @@
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
+#define MAX_NUM_NODES 10
+#define NUM_CHILDREN 5
 
-#define TABLE_SIZE 10
+typedef struct Node {
+    int value;
+    int children[NUM_CHILDREN];
+}treeNode;
 
-typedef struct DoublyNode {
-	int key;
-	struct DoublyNode* next;
-	struct DoublyNode* previous;
-}doubly;
+treeNode* treeRep[MAX_NUM_NODES];
 
-typedef struct Entry {
-	int key;
-	doubly* value;
-}entry;
-
-typedef struct NodesHashTable {
-	int size;
-	entry* table[];
-}hashtable;
-
-typedef struct M_NodesTree {
-	doubly* node;
-	M_NodesTree* children[];
-};
-
-typedef struct DoublysHashTable {
-	int size;
-	doubly* table[];
-
-}doublyhashtable;
-
-
-int hashFunction(int key)
-{
-	return key % TABLE_SIZE;
+treeNode* newNode(int value) {
+    treeNode* n = (treeNode*)malloc(sizeof(treeNode));
+    n->value = 0;
+    int i = 1;
+    while (i < NUM_CHILDREN) {
+        n->children[i] = 0;
+        i++;
+    }
+    return n;
 }
 
-int generateQuadraticIndex(int key, int index)
-{
-	return (key + (index * index)) % TABLE_SIZE;
+treeNode* TransformationPR_MWT(int array[], int size) {
+    int i = 1;
+    while (i < size) {
+        treeRep[i] = newNode(i);
+        i++;
+    }
+    treeNode* root = NULL;
+    i = 1;
+    while (i < size) {
+        if (array[i] == -1) {
+            treeRep[i]->value = i;
+            root = treeRep[i];
+        }
+        else {
+            if (treeRep[array[i]]->value == 0) {
+                treeRep[array[i]]->value = array[i];
+                treeRep[array[i]]->children[1] = i;
+            }
+            else {
+                int j = 2;
+                while (treeRep[array[i]]->children[j] != 0)
+                    j++;
+                treeRep[array[i]]->children[j] = i;
+            }
+        }
+        i++;
+    }
+
+    return root;
 }
 
-doubly* createNewDoublyNode(int value)
-{
-	doubly* newNode = (doubly*)malloc(sizeof(doubly));
-	newNode->key = value;
-	newNode->next = newNode->previous = NULL;
-	return newNode;
+typedef struct MWtreeRep {
+    int value;
+    MWtreeRep* child;
+    MWtreeRep* sibling;
+}MWtreeRep;
+
+MWtreeRep* treeRep3;
+
+MWtreeRep* TransformationMWT_BI(int index) {
+    if (index == 0) return NULL;
+
+    MWtreeRep* current = (MWtreeRep*)malloc(sizeof(MWtreeRep));
+    current->value = treeRep[index]->value;
+    current->child = NULL;
+    current->sibling = NULL;
+
+    MWtreeRep* previous = NULL;
+    int i = 1;
+    while (i < MAX_NUM_NODES && treeRep[index]->children[i] != 0) {
+        int childIndex = treeRep[index]->children[i];
+        MWtreeRep* newChild = TransformationMWT_BI(childIndex);
+        if (i == 1) {
+            current->child = newChild;
+            current->child->value = treeRep[index]->children[i];
+        }
+        else
+            previous->sibling = newChild;
+
+        previous = newChild;
+        previous->value = treeRep[index]->children[i];
+        i++;
+    }
+
+    return current;
 }
 
-hashtable* createHashTable()
-{
-	hashtable* ht = (hashtable*)malloc(sizeof(hashtable));
-	ht->size = 0;
-
-	int i = 0;
-	while (i < TABLE_SIZE)
-	{
-		ht->table[i] = NULL;
-		i++;
-	}
-	return ht;
+void prettyPrintR1(int array[], int size, int index, int level) {
+    int i = 0;
+    while (i < level) {
+        printf("   ");
+        i++;
+    }
+    printf("%d\n", index);
+    i = 1;
+    while (i < size) {
+        if (array[i] == index)
+            prettyPrintR1(array, size, i, level + 1);
+        i++;
+    }
 }
 
-doublyhashtable* createDoublyHashTable()
-{
-	doublyhashtable* ht = (doublyhashtable*)malloc(sizeof(doublyhashtable));
-	ht->size = 0;
-	for (int i = 0; i < TABLE_SIZE; i++) {
-		ht->table[i] = NULL;
-	}
-	return ht;
+void prettyPrintR2(treeNode* root, int level) {
+    if (!root) return;
+    if (root->value != 0) {
+        int i = 0;
+        while (i < level) {
+            printf("    ");
+            i++;
+        }
+        printf("%d\n", root->value);
+    }
+
+    int j = 1;
+    while (j < MAX_NUM_NODES && root->children[j]) {
+        prettyPrintR2(treeRep[root->children[j]], level + 1);
+        j++;
+    }
+
+    if (level >= 0 && root->children[1] != 0) {
+        int i = 1;
+        while (i < MAX_NUM_NODES && root->children[i] != 0) {
+            if (treeRep[root->children[i]]->value == 0) {
+                int j = 0;
+                while (j < level + 1) {
+                    printf("   ");
+                    j++;
+                }
+                printf("%d\n", root->children[i]);
+            }
+            i++;
+        }
+    }
 }
 
-void hashInsert(hashtable** ht, entry* entry)
-{
-
-	if ((*ht)->size >= TABLE_SIZE)
-	{
-		printf("The table is full");
-	}
-
-	int index = hashFunction(entry->key);
-	int i = 0;
-
-	while ((*ht)->table[index] != NULL) {
-		index = generateQuadraticIndex(index, i);
-		i++;
-	}
-
-	(*ht)->table[index] = entry;
-	//ht->table[index]->parent = parent;
-	(*ht)->size++;
-	//printf("\nThe element %d has been inserted to the table", key);
+void prettyPrintR3(MWtreeRep* root, int level) {
+    if (!root) return;
+    int i = 0;
+    while (i < level) {
+        printf("  ");
+        i++;
+    }
+    printf("%d\n", root->value);
+    prettyPrintR3(root->child, level + 1);
+    prettyPrintR3(root->sibling, level);
 }
-
-// to insert doubly nodes in the hash
-void hashInsertDoubly(doublyhashtable** ht, doubly* node)
-{
-
-	if ((*ht)->size >= TABLE_SIZE)
-	{
-		printf("The table is full");
-	}
-
-	int index = hashFunction(node->key);
-	int i = 0;
-
-	while ((*ht)->table[index] != NULL) {
-		index = generateQuadraticIndex(index, i);
-		i++;
-	}
-
-	(*ht)->table[index] = node;
-	//ht->table[index]->parent = parent;
-	(*ht)->size++;
-	//printf("\nThe element %d has been inserted to the table", key);
-}
-
-Entry* hashSearch(hashtable** ht, entry* entry)
-{
-	int index = hashFunction(entry->key);
-
-	if ((*ht)->table[index] == NULL)
-	{
-		//printf("\nThe element %d is not present in the table", key);
-		return NULL;
-	}
-
-	int i = 0;
-	while ((*ht)->table[index] != NULL)
-	{
-		if ((*ht)->table[index]->key == entry->key)
-		{
-			return (*ht)->table[index];
-		}
-		index = generateQuadraticIndex(entry->key, index);
-		i++;
-	}
-}
-
-//to search doubly nodes in the hash
-doubly* hashSearchDoubly(doublyhashtable** ht, doubly* node)
-{
-	int index = hashFunction(node->key);
-
-	if ((*ht)->table[index] == NULL)
-	{
-		//printf("\nThe element %d is not present in the table", key);
-		return NULL;
-	}
-
-	int i = 0;
-	while ((*ht)->table[index] != NULL)
-	{
-		if ((*ht)->table[index]->key == node->key)
-		{
-			return (*ht)->table[index];
-		}
-		index = generateQuadraticIndex(node->key, index);
-		i++;
-	}
-}
-
-
-typedef struct specialStruct {
-	int rootValue;
-	int* array[3]; // here we have to define as a constant the number of childer 
-}specialSt;
-
-typedef struct hashtable {
-	int size;
-	specialStruct* table[TABLE_SIZE];
-}ht;
-
-
-specialStruct* createSpecialStruct(int rootValue)
-{
-	specialStruct* newStruct = (specialStruct*)malloc(sizeof(specialStruct));
-	newStruct->rootValue = rootValue;
-
-	for (int i = 0; i < 3; i++)
-	{
-		newStruct->array[i] = NULL;
-	}
-	return newStruct;
-}
-
-
-ht* createHash()
-{
-	ht* htable = (ht*)malloc(sizeof(ht));
-	htable->size = 0;
-
-	for (int i = 0; i < TABLE_SIZE; i++)
-	{
-		htable->table[i] = NULL;
-	}
-	return htable;
-}
-
-
-specialStruct* insertInSpecialhash(ht** ht, int root)
-{
-	if ((*ht)->size >= TABLE_SIZE)
-	{
-		return NULL;
-	}
-
-}
-
-
-
-
-
 
 int main() {
+    int array[] = { 0, 2, 7, 5, 2, 7, 7, -1, 5, 2 };
+    prettyPrintR1(array, MAX_NUM_NODES, 7, 0);
+    printf("\n");
 
-	int arr[] = { 2, 7, 5, 2, 7, 7, -1, 5, 2 };
-	int n = sizeof(arr) / sizeof(arr[0]);
+    printf("PR_MWT trans: \n\n");
+    treeNode* root = TransformationPR_MWT(array, MAX_NUM_NODES);
+    prettyPrintR2(root, 0);
+    printf("\n");
 
-	doublyhashtable* ht = createDoublyHashTable();
+    printf("MWT_BI trans: \n\n");
+    MWtreeRep* rootR3 = TransformationMWT_BI(root->value);
+    prettyPrintR3(rootR3, 0);
 
-	doubly* node1 = createNewDoublyNode(1);
-	doubly* node2 = createNewDoublyNode(2);
-	node1->next = node2;
-	hashInsertDoubly(&ht, node2);
-
-
-	doubly* node2 = hashSearchDoubly(&ht, node2);
-	if (node2) {
-
-	}
-
-
-	return 0;
+    return 0;
 }
